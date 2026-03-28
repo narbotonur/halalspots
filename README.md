@@ -1,3 +1,7 @@
+## Live Demo
+
+https://halalspots-narbotonurs-projects.vercel.app
+
 ## Preview
 
 ![App Screenshot](./public/preview.png)
