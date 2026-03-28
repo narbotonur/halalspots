@@ -3,7 +3,11 @@
 import { useState } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { PlaceCard } from "@/components/features/PlaceCard";
-import { Map } from "@/components/features/Map";
+import dynamic from "next/dynamic";
+
+const Map = dynamic(() => import("@/components/features/Map").then((mod) => mod.Map), {
+  ssr: false,
+});
 
 const places = [
   {
