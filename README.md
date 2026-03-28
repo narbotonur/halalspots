@@ -1,3 +1,7 @@
+## Preview
+
+![App Screenshot](./public/preview.png)
+
 # HalalSpots
 
 A frontend web application for discovering halal places on a map.
