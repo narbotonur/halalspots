@@ -1,35 +1,38 @@
-type Props = {
-  name: string;
-};
+import { CheckIcon, CloseIcon, HeartIcon, RouteIcon, ShareIcon } from "@/components/ui/Icons";
+import { categoryLabels, directionsUrl } from "@/lib/place-utils";
+import type { Place } from "@/lib/types";
 
-export const MapPopup = ({ name }: Props) => {
+type Props = { place: Place; favorite: boolean; onClose: () => void; onFavorite: () => void };
+
+export function MapPopup({ place, favorite, onClose, onFavorite }: Props) {
+  async function share() {
+    try {
+      const url = place.osmUrl ?? directionsUrl(place);
+      if (navigator.share) await navigator.share({ title: place.name, text: place.address, url });
+      else await navigator.clipboard.writeText(url);
+    } catch { /* Cancelling the system share sheet is not an app error. */ }
+  }
   return (
-    <div className="absolute left-1/2 bottom-6 z-[1000] hidden w-[75%] max-w-[520px] -translate-x-1/2 rounded-[32px] border border-gray-100 bg-white p-5 shadow-2xl xl:block">
-      <div className="flex items-center justify-between gap-3">
-        <h3 className="text-[32px] leading-none font-semibold text-[#1f1f1f]">
-          {name}
-        </h3>
-
-        <button className="shrink-0 rounded-full bg-[#f3f3f3] px-4 py-2 text-sm text-gray-700">
-          Open in Maps
-        </button>
+    <section className="map-detail" aria-label={`Информация о ${place.name}`}>
+      <div className={`detail-visual visual-${place.category}`}><span>{place.name.slice(0, 1).toUpperCase()}</span></div>
+      <div className="detail-body">
+        <div className="detail-heading">
+          <div><div className="eyebrow">{categoryLabels[place.category]}</div><h2>{place.name}</h2></div>
+          <button type="button" className="icon-button detail-close" onClick={onClose} aria-label="Закрыть карточку"><CloseIcon /></button>
+        </div>
+        <p className="detail-address">{place.address}</p>
+        <div className="detail-meta">
+          <span className={`verification ${place.halal === "tagged" ? "verified" : "community"}`}><CheckIcon />{place.halal === "tagged" ? "Отмечено halal в OSM" : "Непроверенное демо"}</span>
+          {place.delivery && <span className="soft-tag">Доставка</span>}
+          {place.takeaway && <span className="soft-tag">С собой</span>}
+        </div>
+        {place.openingHours && <p className="opening-hours"><b>Часы:</b> {place.openingHours}</p>}
+        <div className="detail-actions">
+          <a className="primary-action" href={directionsUrl(place)} target="_blank" rel="noreferrer"><RouteIcon />Построить маршрут</a>
+          <button type="button" className={`icon-button ${favorite ? "active" : ""}`} onClick={onFavorite} aria-label="Избранное"><HeartIcon filled={favorite} /></button>
+          <button type="button" className="icon-button" onClick={() => void share()} aria-label="Поделиться"><ShareIcon /></button>
+        </div>
       </div>
-
-      <div className="mt-4 flex gap-3">
-        <div className="h-[96px] flex-1 rounded-2xl bg-gray-200" />
-        <div className="h-[96px] flex-1 rounded-2xl bg-gray-200" />
-        <div className="h-[96px] flex-1 rounded-2xl bg-gray-200" />
-      </div>
-
-      <div className="mt-5 flex items-center gap-3">
-        <button className="flex-1 rounded-full bg-gradient-to-r from-[#c92df1] to-[#a92dff] py-4 text-lg font-medium text-white">
-          Reserve a spot
-        </button>
-
-        <button className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#c92df1] text-white text-xl">
-          📷
-        </button>
-      </div>
-    </div>
+    </section>
   );
-};
+}

@@ -1,67 +1,43 @@
 "use client";
 
-import { useEffect } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import { useEffect, useMemo } from "react";
+import { CircleMarker, MapContainer, Marker, TileLayer, Tooltip, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { MapPopup } from "./MapPopup";
-
-type Place = {
-  name: string;
-  coords: [number, number];
-};
+import type { Place } from "@/lib/types";
 
 type Props = {
-  places: Place[];
-  selectedPlace: Place | null;
+  places: Place[]; selectedPlace: Place | null; userPosition: [number, number] | null;
+  favorites: Set<string>; onSelect: (place: Place) => void; onClose: () => void; onFavorite: (id: string) => void;
 };
 
-const customIcon = new L.Icon({
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  iconRetinaUrl:
-    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
-
-function FlyToPlace({ selectedPlace }: { selectedPlace: Place | null }) {
+function MapController({ selectedPlace, userPosition }: Pick<Props, "selectedPlace" | "userPosition">) {
   const map = useMap();
-
   useEffect(() => {
-    if (selectedPlace) {
-      map.flyTo(selectedPlace.coords, 15, { duration: 1.2 });
-    }
-  }, [selectedPlace, map]);
-
+    if (selectedPlace) map.flyTo(selectedPlace.coords, Math.max(map.getZoom(), 15), { duration: 0.8 });
+    else if (userPosition) map.flyTo(userPosition, 14, { duration: 0.8 });
+  }, [selectedPlace, userPosition, map]);
   return null;
 }
 
-export const Map = ({ places, selectedPlace }: Props) => {
+function markerIcon(place: Place, selected: boolean) {
+  const initial = place.name.slice(0, 1).toLocaleUpperCase("ru").replace(/[<>]/g, "");
+  return L.divIcon({ className: "halal-marker-wrap", html: `<span class="halal-marker ${selected ? "selected" : ""}"><b>${initial}</b></span>`, iconSize: selected ? [48, 54] : [40, 46], iconAnchor: selected ? [24, 52] : [20, 44] });
+}
+
+export function Map({ places, selectedPlace, userPosition, favorites, onSelect, onClose, onFavorite }: Props) {
+  const icons = useMemo(() => new globalThis.Map(places.map((place) => [place.id, markerIcon(place, selectedPlace?.id === place.id)])), [places, selectedPlace]);
   return (
-    <div className="absolute inset-0">
-      <MapContainer
-        center={[51.1694, 71.4491]}
-        zoom={13}
-        className="h-full w-full z-0"
-      >
-        <TileLayer
-          attribution="&copy; OpenStreetMap"
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-
-        <FlyToPlace selectedPlace={selectedPlace} />
-
-        {places.map((place, i) => (
-          <Marker key={i} position={place.coords} icon={customIcon}>
-            <Popup>{place.name}</Popup>
-          </Marker>
-        ))}
+    <div className="map-root">
+      <MapContainer center={[51.1694, 71.4491]} zoom={12} zoomControl className="map-canvas">
+        <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+        <MapController selectedPlace={selectedPlace} userPosition={userPosition} />
+        {userPosition && <CircleMarker center={userPosition} radius={8} pathOptions={{ color: "#fff", fillColor: "#1677ff", fillOpacity: 1, weight: 3 }}><Tooltip>Вы здесь</Tooltip></CircleMarker>}
+        {places.map((place) => <Marker key={place.id} position={place.coords} icon={icons.get(place.id)!} eventHandlers={{ click: () => onSelect(place) }} zIndexOffset={selectedPlace?.id === place.id ? 500 : 0}><Tooltip direction="top" offset={[0, -38]}>{place.name}</Tooltip></Marker>)}
       </MapContainer>
-
-      {selectedPlace && <MapPopup name={selectedPlace.name} />}
+      <div className="map-attribution-note">Данные мест: OpenStreetMap contributors</div>
+      {selectedPlace && <MapPopup place={selectedPlace} favorite={favorites.has(selectedPlace.id)} onClose={onClose} onFavorite={() => onFavorite(selectedPlace.id)} />}
     </div>
   );
-};
+}
